@@ -29,8 +29,12 @@ public class Worker implements Runnable
             
             try
             {
+                Logger.Log(String.format("Incoming request from remote address %s", this.connectionSocket.getRemoteSocketAddress().toString()));
+                
                 // Attempt to parse the incoming HTTP request
                 request = new HTTPRequest(this.connectionSocket.getInputStream());
+                
+                Logger.Log("Successfully parsed incoming request");
                 
                 // If no exceptions were encountered, the request was valid so we will now attempt to process it
                 // If output caching is enabled, check our cache to see if there is a valid cached response that can be used
@@ -41,7 +45,9 @@ public class Worker implements Runnable
                 }
                 else // No cache hit, so we must build the response
                 {
+                    Logger.Log("Building response");
                     response = HTTPResponse.BuildHTTPResponseWithBody(request);
+                    Logger.Log("Response built");
                 }
             }
             catch (RequestException re)
@@ -51,11 +57,14 @@ public class Worker implements Runnable
             }
                     
             // Now we try to send the response to the client
+            Logger.Log("Sending response");
             response.Send(this.connectionSocket.getOutputStream());
+            Logger.Log("Response sent");
             
             // Close the connection
             // TODO change this behaviour for KeepAlive
             this.connectionSocket.close();
+            Logger.Log(String.format("Connection closed to remote address %s", this.connectionSocket.getRemoteSocketAddress().toString()));
         }
         catch (ResponseException re)
         {

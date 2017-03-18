@@ -44,6 +44,9 @@ public class Configuration
 
     // Logging level
     private int loggingLevel;
+    
+    // Log file
+    private String logFile;
 
     // Root directory
     private String rootDirectory;
@@ -51,10 +54,33 @@ public class Configuration
     // Default document
     private String defaultDocument; // Specifies the default document, e.g.
                                     // index.html
+    
+    // Debug mode
+    private boolean debugMode;
 
     public Configuration()
     {
         this.loadConfiguration();
+    }
+    
+    public void LogConfiguration()
+    {
+        Logger.Log(String.format("CONFIG: port %d", this.port));
+        Logger.Log(String.format("CONFIG: enableThreadPool %s", this.enableThreadPool));
+        Logger.Log(String.format("CONFIG: numThreads %d", this.numThreads));
+        Logger.Log(String.format("CONFIG: enableClientCaching %s", this.enableClientCaching));
+        Logger.Log(String.format("CONFIG: enableContentCaching %s", this.enableContentCaching));
+        Logger.Log(String.format("CONFIG: maxContentCacheSize %d", this.maxContentCacheSize));
+        Logger.Log(String.format("CONFIG: enableOutputCaching %s", this.enableOutputCaching));
+        Logger.Log(String.format("CONFIG: maxOutputCacheSize %d", this.maxOutputCacheSize));
+        Logger.Log(String.format("CONFIG: enableHTTPKeepAlive %s", this.enableHTTPKeepAlive));
+        Logger.Log(String.format("CONFIG: httpKeepAliveTimeout %d", this.httpKeepAliveTimeout));
+        Logger.Log(String.format("CONFIG: httpKeepAliveMax %d", this.httpKeepAliveMax));
+        Logger.Log(String.format("CONFIG: loggingLevel %d", this.loggingLevel));
+        Logger.Log(String.format("CONFIG: logFile %s", this.logFile));
+        Logger.Log(String.format("CONFIG: rootDirectory %s", this.rootDirectory));
+        Logger.Log(String.format("CONFIG: defaultDocument %s", this.defaultDocument));
+        Logger.Log(String.format("CONFIG: debugMode %s", this.debugMode));
     }
 
     // TODO Implement this to load from a file
@@ -62,7 +88,7 @@ public class Configuration
     {
         this.port = 8080;
         this.enableThreadPool = true;
-        this.numThreads = 1;
+        this.numThreads = 10;
         this.enableClientCaching = false;
         this.enableContentCaching = false;
         this.maxContentCacheSize = 0;
@@ -72,8 +98,10 @@ public class Configuration
         this.httpKeepAliveTimeout = 5;
         this.httpKeepAliveMax = 100;
         this.loggingLevel = 0;
+        this.logFile = "log.txt";
         this.rootDirectory = "C:\\webserver\\content";
         this.defaultDocument = "index.html";
+        this.debugMode = true;
     }
 
     public int getPort()
@@ -135,6 +163,11 @@ public class Configuration
     {
         return this.loggingLevel;
     }
+    
+    public String getLogFile()
+    {
+        return this.logFile;
+    }
 
     public String getRootDirectory()
     {
@@ -144,5 +177,10 @@ public class Configuration
     public String getDefaultDocument()
     {
         return this.defaultDocument;
+    }
+    
+    public boolean isDebugMode()
+    {
+        return this.debugMode;
     }
 }

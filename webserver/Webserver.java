@@ -37,7 +37,7 @@ public class Webserver
         // Since all of the processing done for the request/response mechanism is done by worker threads
         // all that needs to be done here is queuing the incoming requests
         
-        System.out.println("Listening...");
+        Logger.Log(String.format("Webserver listening on address %s", this.listeningSocket.getLocalSocketAddress().toString()));
         
         while (true)
         {

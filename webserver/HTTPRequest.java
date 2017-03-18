@@ -22,6 +22,11 @@ public class HTTPRequest
 
         try
         {
+            // NOTE: This reader should not be closed; this will cause the connection to the client to be closed
+            // before any response can be sent back to the client.  Instead, the connection should be closed
+            // after the response is sent, if HTTP KeepAlive is not enabled.  If it is enabled, the connection will be managed
+            // and closed when appropriate
+            // TODO KeepAlive
             BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
             
             // Read and parse the first line of the request.  This should be in form of something like

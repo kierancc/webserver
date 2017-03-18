@@ -132,6 +132,12 @@ public class HTTPResponse
             this.headerFields.put("connection", "close");
         }
         
+        // If the server is running in debug mode, include some extra information in the header fields
+        if (Configuration.GetConfiguration().isDebugMode())
+        {
+            this.headerFields.put("server-thread-id", String.valueOf(Thread.currentThread().getId()));
+        }
+        
         // Add header fields specific to each possible response code
         switch(this.responseCode)
         {
