@@ -37,7 +37,7 @@ public class Webserver
         // Since all of the processing done for the request/response mechanism is done by worker threads
         // all that needs to be done here is queuing the incoming requests
         
-        Logger.Log(String.format("Webserver listening on address %s", this.listeningSocket.getLocalSocketAddress().toString()));
+        Logger.Log(Logger.INFORMATION, String.format("Webserver listening on address %s", this.listeningSocket.getLocalSocketAddress().toString()));
         
         while (true)
         {
@@ -45,6 +45,7 @@ public class Webserver
             Socket connectionSocket = this.listeningSocket.accept();
             
             // Queue a new work item
+            Logger.Log(Logger.INFORMATION, String.format("Queuing new incoming connection from remote address : %s", connectionSocket.getRemoteSocketAddress()));
             this.workerThreadPool.submit(new Worker(connectionSocket));
         }
     }

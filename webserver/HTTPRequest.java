@@ -127,6 +127,28 @@ public class HTTPRequest
         return this.requestTarget.replace('/', '\\');
     }
     
+    public String getRequestMethod()
+    {
+        return this.requestMethod;
+    }
+    
+    public String getRequestTarget()
+    {
+        return this.requestTarget;
+    }
+    
+    public String getUserAgent()
+    {
+        if (this.headerFields.containsKey("user-agent"))
+        {
+            return this.headerFields.get("user-agent");
+        }
+        else
+        {
+            return "";
+        }
+    }
+    
     private boolean isMethodSupported(String method)
     {
         for (int i = 0; i < SUPPORTED_REQUEST_METHODS.length; i++)

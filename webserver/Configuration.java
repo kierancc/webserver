@@ -65,22 +65,22 @@ public class Configuration
     
     public void LogConfiguration()
     {
-        Logger.Log(String.format("CONFIG: port %d", this.port));
-        Logger.Log(String.format("CONFIG: enableThreadPool %s", this.enableThreadPool));
-        Logger.Log(String.format("CONFIG: numThreads %d", this.numThreads));
-        Logger.Log(String.format("CONFIG: enableClientCaching %s", this.enableClientCaching));
-        Logger.Log(String.format("CONFIG: enableContentCaching %s", this.enableContentCaching));
-        Logger.Log(String.format("CONFIG: maxContentCacheSize %d", this.maxContentCacheSize));
-        Logger.Log(String.format("CONFIG: enableOutputCaching %s", this.enableOutputCaching));
-        Logger.Log(String.format("CONFIG: maxOutputCacheSize %d", this.maxOutputCacheSize));
-        Logger.Log(String.format("CONFIG: enableHTTPKeepAlive %s", this.enableHTTPKeepAlive));
-        Logger.Log(String.format("CONFIG: httpKeepAliveTimeout %d", this.httpKeepAliveTimeout));
-        Logger.Log(String.format("CONFIG: httpKeepAliveMax %d", this.httpKeepAliveMax));
-        Logger.Log(String.format("CONFIG: loggingLevel %d", this.loggingLevel));
-        Logger.Log(String.format("CONFIG: logFile %s", this.logFile));
-        Logger.Log(String.format("CONFIG: rootDirectory %s", this.rootDirectory));
-        Logger.Log(String.format("CONFIG: defaultDocument %s", this.defaultDocument));
-        Logger.Log(String.format("CONFIG: debugMode %s", this.debugMode));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: port %d", this.port));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableThreadPool %s", this.enableThreadPool));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: numThreads %d", this.numThreads));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableClientCaching %s", this.enableClientCaching));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableContentCaching %s", this.enableContentCaching));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: maxContentCacheSize %d", this.maxContentCacheSize));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableOutputCaching %s", this.enableOutputCaching));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: maxOutputCacheSize %d", this.maxOutputCacheSize));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableHTTPKeepAlive %s", this.enableHTTPKeepAlive));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: httpKeepAliveTimeout %d", this.httpKeepAliveTimeout));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: httpKeepAliveMax %d", this.httpKeepAliveMax));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: loggingLevel %d", this.loggingLevel));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: logFile %s", this.logFile));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: rootDirectory %s", this.rootDirectory));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: defaultDocument %s", this.defaultDocument));
+        Logger.Log(Logger.ALWAYS, String.format("CONFIG: debugMode %s", this.debugMode));
     }
 
     // TODO Implement this to load from a file
@@ -88,7 +88,7 @@ public class Configuration
     {
         this.port = 8080;
         this.enableThreadPool = true;
-        this.numThreads = 10;
+        this.numThreads = 1;
         this.enableClientCaching = false;
         this.enableContentCaching = false;
         this.maxContentCacheSize = 0;
@@ -97,8 +97,8 @@ public class Configuration
         this.enableHTTPKeepAlive = false;
         this.httpKeepAliveTimeout = 5;
         this.httpKeepAliveMax = 100;
-        this.loggingLevel = 0;
-        this.logFile = "log.txt";
+        this.loggingLevel = 1;
+        this.logFile = "server_log.txt";
         this.rootDirectory = "C:\\webserver\\content";
         this.defaultDocument = "index.html";
         this.debugMode = true;

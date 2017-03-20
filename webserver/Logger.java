@@ -7,11 +7,36 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 public class Logger implements Runnable
 {
+    // Logging levels
+    public static final int ALWAYS = 0;
+    public static final int CONNECTION = 1;
+    public static final int ERROR = 2;
+    public static final int WARNING = 3;
+    public static final int INFORMATION = 4;
+    
     private static Logger loggerSingleton = null;
     
-    public static void Log(String line)
+    public static void Log(int logLevel, String line)
     {
-        getLogger().log(String.format("%s : TID %d : %s", new Date().toString(), Thread.currentThread().getId(), line));
+        getLogger().log(logLevel, String.format("%s : TID %d : %s", new Date().toString(), Thread.currentThread().getId(), line));
+    }
+    
+    public static void LogConnection(HTTPRequest request, HTTPResponse response, String clientRemoteAddress, String serverRemoteAddress)
+    {
+        // It is possible to have a null request (for instance, if a bad request was received)
+        // So in this case, do not include request details in the log line, since there aren't any
+        if (request != null)
+        {
+            Log(Logger.CONNECTION, String.format("%s %s %s %s %d %s", clientRemoteAddress, serverRemoteAddress, 
+                                                                                  request.getRequestMethod(), request.getRequestTarget(), 
+                                                                                  response.getResponseCode().toCode(), request.getUserAgent()));
+        }
+        else
+        {
+            Log(Logger.CONNECTION, String.format("%s %s %s %s %d %s", clientRemoteAddress, serverRemoteAddress, 
+                    "-", "-", 
+                    response.getResponseCode().toCode(), "-"));
+        }
     }
     
     public static void Start()
@@ -31,10 +56,12 @@ public class Logger implements Runnable
     
     private ArrayBlockingQueue<String> lines;
     private PrintWriter logWriter;
+    private int logLevel;
     
     private Logger()
     {
         this.lines = new ArrayBlockingQueue<String>(100);
+        this.logLevel = Configuration.GetConfiguration().getLoggingLevel();
         
         try
         {
@@ -46,9 +73,12 @@ public class Logger implements Runnable
         }
     }
     
-    private void log(String line)
+    private void log(int logLevel, String line)
     {
-        this.lines.offer(line);
+        if (logLevel <= this.logLevel)
+        {
+            this.lines.offer(line);
+        }
     }
     
     @Override

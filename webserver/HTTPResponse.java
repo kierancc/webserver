@@ -27,7 +27,7 @@ public class HTTPResponse
                 return HTTPResponse.BuildHTTPResponseWithoutBody(Status.NOT_FOUND);
             }
             // Else if the requested file exists, but can not be read, return a 403 Forbidden response
-            else if (! file.canRead())
+            else if (! Files.isReadable(file.toPath()))
             {
                 return HTTPResponse.BuildHTTPResponseWithoutBody(Status.FORBIDDEN);
             }
@@ -105,6 +105,11 @@ public class HTTPResponse
             
             ostream.flush();
         }
+    }
+    
+    public Status getResponseCode()
+    {
+        return this.responseCode;
     }
     
     private void populateRequiredHeaderFields()
