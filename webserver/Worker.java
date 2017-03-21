@@ -2,6 +2,7 @@ package webserver;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -39,14 +40,15 @@ public class Worker implements Runnable
                 HTTPRequest request = null;
                 HTTPResponse response = null;
                 
+                // Declare the KeepAlive timer so that it is in scope to be cancelled if necessary
+                Timer keepAliveTimeoutTimer = new Timer();
+                
                 try
                 {
                     // Attempt to parse the incoming HTTP request
                     // If this is not the first request handled by this worker (e.g. in the HTTP KeepAlive scenario)
                     // then set the timer to cause a timeout if no input is received from the client on this connection
-                    // within the specified window
-                    Timer keepAliveTimeoutTimer = new Timer();
-                    
+                    // within the specified window                  
                     if (Configuration.GetConfiguration().isEnableHTTPKeepAlive() && this.requestCount > 0)
                     {
                         final long workerThreadID = Thread.currentThread().getId();
@@ -79,6 +81,7 @@ public class Worker implements Runnable
                     {
                         Logger.Log(Logger.INFORMATION, String.format("Cancelling KeepAlive timeout timer for TID %d", Thread.currentThread().getId()));
                         keepAliveTimeoutTimer.cancel();
+                        keepAliveTimeoutTimer.purge();
                     }
 
                     Logger.Log(Logger.INFORMATION, "Building response");
@@ -92,6 +95,16 @@ public class Worker implements Runnable
                     // Note that because the request could not be processed, we do not know if the client requested HTTP KeepAlive
                     // so we will default to this being false, even if support is enabled in the server configuration
                     response = HTTPResponse.BuildHTTPResponseWithoutBody(re.getErrorCode(), false, this.requestCount);
+                }
+                catch (SocketException se)
+                {
+                    // If we have encountered a SocketException that was not converted to a HttpKeepAliveTimeoutException earlier
+                    // then the connection was unexpectedly closed by the peer.  Here we should just make sure to clean up our state
+                    // and then return, since the connection has been closed
+                    Logger.Log(Logger.WARNING, "Warning : Connection unexpectedly closed by peer");
+                    keepAliveTimeoutTimer.cancel();
+                    keepAliveTimeoutTimer.purge();
+                    return;
                 }
                         
                 // Now we try to send the response to the client

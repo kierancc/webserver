@@ -112,6 +112,8 @@ public class HTTPResponse
             
             // Write the bytes to the output stream
             ostream.write(fileBytes);
+            
+            fileBytes = null;
         }
         
         ostream.flush();
@@ -146,7 +148,7 @@ public class HTTPResponse
         {
             this.headerFields.put("connection", "keep-alive");
             
-            // If HTTP 1.1 KeepAlive is enabled, also send that header field   
+            // If HTTP 1.1 KeepAlive is enabled, also send that header field
             this.headerFields.put("keep-alive", "timeout=" + Configuration.GetConfiguration().getHttpKeepAliveTimeout() + ", max=" + this.remainingResponses);
         }
         else
