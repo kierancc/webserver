@@ -88,16 +88,16 @@ public class Configuration
     {
         this.port = 8080;
         this.enableThreadPool = true;
-        this.numThreads = 1;
+        this.numThreads = 10;
         this.enableClientCaching = false;
         this.enableContentCaching = false;
         this.maxContentCacheSize = 0;
         this.enableOutputCaching = false;
         this.maxOutputCacheSize = 0;
-        this.enableHTTPKeepAlive = false;
-        this.httpKeepAliveTimeout = 5;
-        this.httpKeepAliveMax = 100;
-        this.loggingLevel = 1;
+        this.enableHTTPKeepAlive = true;
+        this.httpKeepAliveTimeout = 3;
+        this.httpKeepAliveMax = 5;
+        this.loggingLevel = 4;
         this.logFile = "server_log.txt";
         this.rootDirectory = "C:\\webserver\\content";
         this.defaultDocument = "index.html";

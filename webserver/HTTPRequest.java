@@ -1,6 +1,7 @@
 package webserver;
 
 import java.io.*;
+import java.net.SocketException;
 import java.util.HashMap;
 import java.util.regex.*;
 
@@ -13,6 +14,7 @@ public class HTTPRequest
     private String requestTarget;
     private String httpVersion;
     private HashMap<String, String> headerFields = new HashMap<String, String>();
+    private boolean keepAliveRequested;
     private String messageBody;
     
     public HTTPRequest(InputStream stream) throws Exception
@@ -35,7 +37,23 @@ public class HTTPRequest
             // Note that since we are using the readLine() function of our reader, any CR and LF characters will be removed
             // This is OK because since a line was read, then they were there in the request.  So as long as the preceding
             // line conforms to the HTTP specification there is no problem
-            String line = reader.readLine();
+            String line;
+            
+            // This line will block until input is received.  In the case of a persistent connection that does not receive
+            // another request from the client, the thread will block there until timed out, at which point the socket will be closed.
+            // This isn't really an error since it is expected that this could happen due to the design of the client
+            try
+            {
+                line = reader.readLine();
+            }
+            catch (SocketException se)
+            {
+                Logger.Log(Logger.INFORMATION, "Connection socket closed due to timeout or by peer");
+                throw new HttpKeepAliveTimeoutException();
+            }
+            
+            // For debug purposes, log a line if control reaches here indicating that the above did not happen
+            Logger.Log(Logger.INFORMATION, String.format("HTTP Request received, start-line : %s", line));
             
             Pattern compiledStartLinePattern = Pattern.compile(REQUEST_START_LINE_PATTERN);
             Matcher startLineMatcher = compiledStartLinePattern.matcher(line);
@@ -66,7 +84,6 @@ public class HTTPRequest
             Pattern compiledHeaderLinePattern = Pattern.compile(HEADER_LINE_PATTERN);
             Matcher headerLineMatcher;
             line = reader.readLine();
-            
             
             while (! "".equals(line))
             {
@@ -112,9 +129,29 @@ public class HTTPRequest
                 throw new RequestException(Status.BAD_REQUEST, "Missing host header");
             }
             
+            // Check if the client sent a "connection: keep-alive" header.  If it did, and KeepAlive is enabled, save this information
+            // for later usage by the server
+            if (this.headerFields.containsKey("connection") && this.headerFields.get("connection").toLowerCase().equals("keep-alive"))
+            {
+                this.keepAliveRequested = true;
+            }
+            else
+            {
+                this.keepAliveRequested = false;
+            }
+            
             // If control has reached this point, the request received is valid.  A message body could follow, but it has no meaning
-            // in the context of a GET request
-            // TODO Read message body if implementing POST
+            // in the context of a GET request.   
+            // However, we must ensure that all of the provided input is read, even if we do not need it.  This is necessary if KeepAlive is enabled
+            // to ensure that the next time we read from this stream, we have fresh input.
+            // According to the HTTP specification, a GET request that provides no content-length header has no message body
+            // However, if for some reason a content-length was provided, simply read that number of bytes
+            int messageBodyLength = this.getMessageBodyLength();
+            
+            for (int i = 0; i < messageBodyLength; i++)
+            {
+                reader.read(); // read one
+            }
         }
         catch (IOException e)
         {
@@ -149,6 +186,11 @@ public class HTTPRequest
         }
     }
     
+    public boolean isKeepAliveRequested()
+    {
+        return this.keepAliveRequested;
+    }
+    
     private boolean isMethodSupported(String method)
     {
         for (int i = 0; i < SUPPORTED_REQUEST_METHODS.length; i++)
@@ -160,5 +202,17 @@ public class HTTPRequest
         }
         
         return false;
+    }
+    
+    private int getMessageBodyLength()
+    {
+        if (this.headerFields.containsKey("content-length"))
+        {
+            return Integer.parseInt(this.headerFields.get("content-length"));
+        }
+        else
+        {
+            return 0;
+        }
     }
 }

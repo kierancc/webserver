@@ -11,11 +11,11 @@ import java.util.SimpleTimeZone;
 
 public class HTTPResponse
 {
-    public static HTTPResponse BuildHTTPResponseWithBody(HTTPRequest request)
+    public static HTTPResponse BuildHTTPResponseWithBody(HTTPRequest request, boolean isKeepAliveEnabled, int responseNumber)
     {
         try
         {
-            HTTPResponse response = new HTTPResponse();
+            HTTPResponse response = new HTTPResponse(isKeepAliveEnabled, responseNumber);
             
             // Build the absolute path the requested resource on the local file system
             response.localAbsolutePath = Configuration.GetConfiguration().getRootDirectory() + request.getRequestTargetLocalPath();
@@ -24,12 +24,12 @@ public class HTTPResponse
             // If the requested file does not exist, immediately return a 404 Not Found response
             if (! file.exists())
             {
-                return HTTPResponse.BuildHTTPResponseWithoutBody(Status.NOT_FOUND);
+                return HTTPResponse.BuildHTTPResponseWithoutBody(Status.NOT_FOUND, isKeepAliveEnabled, responseNumber);
             }
             // Else if the requested file exists, but can not be read, return a 403 Forbidden response
             else if (! Files.isReadable(file.toPath()))
             {
-                return HTTPResponse.BuildHTTPResponseWithoutBody(Status.FORBIDDEN);
+                return HTTPResponse.BuildHTTPResponseWithoutBody(Status.FORBIDDEN, isKeepAliveEnabled, responseNumber);
             }
             // Else the file can be read, so we proceed with building the response
             else
@@ -53,13 +53,14 @@ public class HTTPResponse
         {
             // Unhandled exception hit during response generation
             // For simplicity's sake we will call this an internal server error
-            return HTTPResponse.BuildHTTPResponseWithoutBody(Status.INTERNAL_SERVER_ERROR);
+            return HTTPResponse.BuildHTTPResponseWithoutBody(Status.INTERNAL_SERVER_ERROR, isKeepAliveEnabled, responseNumber);
         }
     }
     
-    public static HTTPResponse BuildHTTPResponseWithoutBody(Status responseCode)
+    public static HTTPResponse BuildHTTPResponseWithoutBody(Status responseCode, boolean isKeepAliveEnabled, int responseNumber)
     {
-        HTTPResponse response = new HTTPResponse();
+        HTTPResponse response = new HTTPResponse(isKeepAliveEnabled, responseNumber);
+        
         response.responseCode = responseCode;
         response.populateRequiredHeaderFields();
         
@@ -71,6 +72,16 @@ public class HTTPResponse
     private String localAbsolutePath;
     private long messageBodySize;
     private String mimeType;
+    private boolean isKeepAliveEnabled;
+    private int responseNumber;
+    private int remainingResponses;
+    
+    public HTTPResponse(boolean isKeepAliveEnabled, int responseNumber)
+    {
+        this.isKeepAliveEnabled = isKeepAliveEnabled;
+        this.responseNumber = responseNumber;
+        this.remainingResponses = Configuration.GetConfiguration().getHttpKeepAliveMax() - this.responseNumber;
+    }
     
     public HTTPResponse()
     {
@@ -79,31 +90,37 @@ public class HTTPResponse
     
     public void Send(OutputStream stream) throws Exception
     {
-        try(DataOutputStream ostream = new DataOutputStream(stream))
+        DataOutputStream ostream = new DataOutputStream(stream);
+        
+        // Write the start line of the response, which looks like this
+        // HTTP/1.1 200 OK
+        ostream.write(String.format("%s %s %s\r\n", Webserver.HTTP_VERSION, this.responseCode.toCode(), this.responseCode.toString()).getBytes(StandardCharsets.US_ASCII));
+        
+        // Write the headers
+        for (String key : this.headerFields.keySet())
         {
-            // Write the start line of the response, which looks like this
-            // HTTP/1.1 200 OK
-            ostream.write(String.format("%s %s %s\r\n", Webserver.HTTP_VERSION, this.responseCode.toCode(), this.responseCode.toString()).getBytes(StandardCharsets.US_ASCII));
+            ostream.write(String.format("%s: %s\r\n", key, this.headerFields.get(key)).getBytes(StandardCharsets.US_ASCII));
+        }
+        
+        // Write the blank line between the headers and the message body
+        ostream.write("\r\n".getBytes(StandardCharsets.US_ASCII));
+        
+        // If the local absolute path is specified, then we should also send the contents of the file
+        if (this.localAbsolutePath != null && !this.localAbsolutePath.equals(""))
+        {
+            byte[] fileBytes = Files.readAllBytes(Paths.get(this.localAbsolutePath));
             
-            // Write the headers
-            for (String key : this.headerFields.keySet())
-            {
-                ostream.write(String.format("%s: %s\r\n", key, this.headerFields.get(key)).getBytes(StandardCharsets.US_ASCII));
-            }
-            
-            // Write the blank line between the headers and the message body
-            ostream.write("\r\n".getBytes(StandardCharsets.US_ASCII));
-            
-            // If the local absolute path is specified, then we should also send the contents of the file
-            if (this.localAbsolutePath != null && !this.localAbsolutePath.equals(""))
-            {
-                byte[] fileBytes = Files.readAllBytes(Paths.get(this.localAbsolutePath));
-                
-                // Write the bytes to the output stream
-                ostream.write(fileBytes);
-            }
-            
-            ostream.flush();
+            // Write the bytes to the output stream
+            ostream.write(fileBytes);
+        }
+        
+        ostream.flush();
+        
+        // If HTTP KeepAlive is either not enabled or not valid for this response, close the output stream
+        // otherwise, do not close it, as this would inadvertently close the connection to the client
+        if (! this.isKeepAliveEnabled)
+        {
+            ostream.close();
         }
     }
     
@@ -111,7 +128,7 @@ public class HTTPResponse
     {
         return this.responseCode;
     }
-    
+
     private void populateRequiredHeaderFields()
     {
         // Add header fields required for all response codes capable of being sent
@@ -125,12 +142,12 @@ public class HTTPResponse
         this.headerFields.put("server", Webserver.SERVER_VERSION);
         
         // Add the connection header field
-        if (Configuration.GetConfiguration().isEnableHTTPKeepAlive())
+        if (this.isKeepAliveEnabled && this.remainingResponses > 0)
         {
-            this.headerFields.put("connection", "Keep-Alive");
+            this.headerFields.put("connection", "keep-alive");
             
             // If HTTP 1.1 KeepAlive is enabled, also send that header field   
-            this.headerFields.put("keep-alive", "timeout=" + Configuration.GetConfiguration().getHttpKeepAliveTimeout() + ", max=" + Configuration.GetConfiguration().getHttpKeepAliveMax());
+            this.headerFields.put("keep-alive", "timeout=" + Configuration.GetConfiguration().getHttpKeepAliveTimeout() + ", max=" + this.remainingResponses);
         }
         else
         {
@@ -151,12 +168,16 @@ public class HTTPResponse
         case CONTINUE:
             break;
         case FORBIDDEN:
+            // Content-Length
+            this.headerFields.put("content-length", "0");
             break;
         case HTTP_VERSION_NOT_SUPPORTED:
             break;
         case INTERNAL_SERVER_ERROR:
             break;
         case NOT_FOUND:
+            // Content-Length
+            this.headerFields.put("content-length", "0");
             break;
         case NOT_IMPLEMENTED:
             break;
