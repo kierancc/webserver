@@ -1,5 +1,12 @@
 package webserver;
 
+import java.beans.XMLDecoder;
+import java.beans.XMLEncoder;
+import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 public class Configuration
 {
     private static Configuration configSingleton = null;
@@ -8,16 +15,52 @@ public class Configuration
     {
         if (configSingleton == null)
         {
-            configSingleton = new Configuration();
-            configSingleton.loadConfiguration();
+            configSingleton = Configuration.LoadConfiguration();
         }
         
         return configSingleton;
     }
     
+    public static void SaveConfigurationToXML(Configuration config)
+    {
+        try
+        {
+            try(XMLEncoder encoder = new XMLEncoder(new BufferedOutputStream(new FileOutputStream(Configuration.CONFIG_PATH))))
+            {
+                encoder.writeObject(config);
+            }
+        }
+        catch(IOException e)
+        {
+            System.err.println(String.format("Error saving configuration file : %s", e.toString()));
+        }
+    }
+    
+    public static Configuration LoadConfiguration()
+    {
+        Configuration config;
+        
+        try
+        {
+            try(XMLDecoder decoder = new XMLDecoder(new FileInputStream(Configuration.CONFIG_PATH)))
+            {
+                config = (Configuration) decoder.readObject();
+            }
+        }
+        catch (IOException e)
+        {
+            // We failed to read the saved configuration, so create a new Configuration object with the default
+            // settings and return that
+            System.err.println("Error loading saved configuration, using default configuration");
+            config = new Configuration();
+            config.SetDefaultConfiguration();
+        }
+        
+        return config;
+    }
     
     // Path to saved configuration file on filesystem
-    private static final String configPath = "config.xml";
+    private static final String CONFIG_PATH = "config.xml";
 
     // Configurable members
 
@@ -30,12 +73,6 @@ public class Configuration
 
     // Client-side Caching
     private boolean enableClientCaching;
-
-    // Server-side Caching Options
-    private boolean enableContentCaching;
-    private int maxContentCacheSize; // Maximum cache size in MB per working thread
-    private boolean enableOutputCaching;
-    private int maxOutputCacheSize;
 
     // HTTP 1.1 KeepAlive
     private boolean enableHTTPKeepAlive;
@@ -60,7 +97,22 @@ public class Configuration
 
     public Configuration()
     {
-        this.loadConfiguration();
+    }
+    
+    public void SetDefaultConfiguration()
+    {
+        this.port = 8080;
+        this.enableThreadPool = true;
+        this.numThreads = 10;
+        this.enableClientCaching = false;
+        this.enableHTTPKeepAlive = true;
+        this.httpKeepAliveTimeout = 3;
+        this.httpKeepAliveMax = 5;
+        this.loggingLevel = 4;
+        this.logFile = "server_log.txt";
+        this.rootDirectory = "C:\\webserver\\content";
+        this.defaultDocument = "index.html";
+        this.debugMode = true;
     }
     
     public void LogConfiguration()
@@ -69,10 +121,6 @@ public class Configuration
         Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableThreadPool %s", this.enableThreadPool));
         Logger.Log(Logger.ALWAYS, String.format("CONFIG: numThreads %d", this.numThreads));
         Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableClientCaching %s", this.enableClientCaching));
-        Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableContentCaching %s", this.enableContentCaching));
-        Logger.Log(Logger.ALWAYS, String.format("CONFIG: maxContentCacheSize %d", this.maxContentCacheSize));
-        Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableOutputCaching %s", this.enableOutputCaching));
-        Logger.Log(Logger.ALWAYS, String.format("CONFIG: maxOutputCacheSize %d", this.maxOutputCacheSize));
         Logger.Log(Logger.ALWAYS, String.format("CONFIG: enableHTTPKeepAlive %s", this.enableHTTPKeepAlive));
         Logger.Log(Logger.ALWAYS, String.format("CONFIG: httpKeepAliveTimeout %d", this.httpKeepAliveTimeout));
         Logger.Log(Logger.ALWAYS, String.format("CONFIG: httpKeepAliveMax %d", this.httpKeepAliveMax));
@@ -83,65 +131,44 @@ public class Configuration
         Logger.Log(Logger.ALWAYS, String.format("CONFIG: debugMode %s", this.debugMode));
     }
 
-    // TODO Implement this to load from a file
-    private void loadConfiguration()
-    {
-        this.port = 8080;
-        this.enableThreadPool = true;
-        this.numThreads = 10;
-        this.enableClientCaching = false;
-        this.enableContentCaching = false;
-        this.maxContentCacheSize = 0;
-        this.enableOutputCaching = false;
-        this.maxOutputCacheSize = 0;
-        this.enableHTTPKeepAlive = true;
-        this.httpKeepAliveTimeout = 3;
-        this.httpKeepAliveMax = 5;
-        this.loggingLevel = 4;
-        this.logFile = "server_log.txt";
-        this.rootDirectory = "C:\\webserver\\content";
-        this.defaultDocument = "index.html";
-        this.debugMode = true;
-    }
-
     public int getPort()
     {
         return this.port;
+    }
+    
+    public void setPort(int port)
+    {
+        this.port = port;
     }
 
     public boolean isEnableThreadPool()
     {
         return this.enableThreadPool;
     }
+    
+    public void setEnableThreadPool(boolean enableThreadPool)
+    {
+        this.enableThreadPool = enableThreadPool;
+    }
 
     public int getNumThreads()
     {
         return this.numThreads;
+    }
+    
+    public void setNumThreads(int numThreads)
+    {
+        this.numThreads = numThreads;
     }
 
     public boolean isEnableClientCaching()
     {
         return this.enableClientCaching;
     }
-
-    public boolean isEnableContentCaching()
-    {
-        return this.enableContentCaching;
-    }
-
-    public int getMaxContentCacheSize()
-    {
-        return this.maxContentCacheSize;
-    }
     
-    public boolean isEnableOutputCaching()
+    public void setEnableClientCaching(boolean enableClientCaching)
     {
-        return this.enableOutputCaching;
-    }
-    
-    public int getMaxOutputCacheSize()
-    {
-        return this.maxOutputCacheSize;
+        this.enableClientCaching = enableClientCaching;
     }
 
     public boolean isEnableHTTPKeepAlive()
@@ -149,14 +176,29 @@ public class Configuration
         return this.enableHTTPKeepAlive;
     }
     
+    public void setEnableHTTPKeepAlive(boolean enableHTTPKeepAlive)
+    {
+        this.enableHTTPKeepAlive = enableHTTPKeepAlive;
+    }
+    
     public int getHttpKeepAliveTimeout()
     {
         return this.httpKeepAliveTimeout;
     }
     
+    public void setHttpKeepAliveTimeout(int httpKeepAliveTimeout)
+    {
+        this.httpKeepAliveTimeout = httpKeepAliveTimeout;
+    }
+    
     public int getHttpKeepAliveMax()
     {
         return this.httpKeepAliveMax;
+    }
+    
+    public void setHttpKeepAliveMax(int httpKeepAliveMax)
+    {
+        this.httpKeepAliveMax = httpKeepAliveMax;
     }
 
     public int getLoggingLevel()
@@ -164,14 +206,29 @@ public class Configuration
         return this.loggingLevel;
     }
     
+    public void setLoggingLevel(int loggingLevel)
+    {
+        this.loggingLevel = loggingLevel;
+    }
+    
     public String getLogFile()
     {
         return this.logFile;
+    }
+    
+    public void setLogFile(String logFile)
+    {
+        this.logFile = logFile;
     }
 
     public String getRootDirectory()
     {
         return this.rootDirectory;
+    }
+    
+    public void setRootDirectory(String rootDirectory)
+    {
+        this.rootDirectory = rootDirectory;
     }
 
     public String getDefaultDocument()
@@ -179,8 +236,18 @@ public class Configuration
         return this.defaultDocument;
     }
     
+    public void setDefaultDocument(String defaultDocument)
+    {
+        this.defaultDocument = defaultDocument;
+    }
+    
     public boolean isDebugMode()
     {
         return this.debugMode;
+    }
+    
+    public void setDebugMode(boolean debugMode)
+    {
+        this.debugMode = debugMode;
     }
 }

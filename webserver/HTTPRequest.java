@@ -15,7 +15,6 @@ public class HTTPRequest
     private String httpVersion;
     private HashMap<String, String> headerFields = new HashMap<String, String>();
     private boolean keepAliveRequested;
-    private String messageBody;
     
     public HTTPRequest(InputStream stream) throws Exception
     {
@@ -74,6 +73,13 @@ public class HTTPRequest
             if (! this.isMethodSupported(this.requestMethod))
             {
                 throw new RequestException(Status.NOT_IMPLEMENTED, "Method " + this.requestMethod + " not implemented");
+            }
+            
+            // Check that a specific resource was requested, otherwise apply the default document name if only a directory was requested
+            if (this.requestTarget.equals("/"))
+            {
+                Logger.Log(Logger.INFORMATION, "Specific document not requested, applying default document");
+                this.requestTarget += Configuration.GetConfiguration().getDefaultDocument();
             }
             
             // Next we read and parse any provided request headers. These have a form like

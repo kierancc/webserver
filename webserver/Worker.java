@@ -67,7 +67,7 @@ public class Worker implements Runnable
                                     Logger.Log(Logger.ERROR, String.format("Error closing connected socket due to KeepAlive timeout : %s", e.toString()));
                                 }
                             }
-                        }, Configuration.GetConfiguration().getHttpKeepAliveTimeout() * 1000);
+                        }, this.keepAliveTimeout * 1000);
                     }
                     
                     request = new HTTPRequest(this.connectionSocket.getInputStream());
@@ -80,20 +80,11 @@ public class Worker implements Runnable
                         Logger.Log(Logger.INFORMATION, String.format("Cancelling KeepAlive timeout timer for TID %d", Thread.currentThread().getId()));
                         keepAliveTimeoutTimer.cancel();
                     }
-                    
-                    // If no exceptions were encountered, the request was valid so we will now attempt to process it
-                    // If output caching is enabled, check our cache to see if there is a valid cached response that can be used
-                    if (Configuration.GetConfiguration().isEnableContentCaching())
-                    {
-                        // TODO Implement this
-                        response = null;
-                    }
-                    else // No cache hit, so we must build the response
-                    {
-                        Logger.Log(Logger.INFORMATION, "Building response");
-                        response = HTTPResponse.BuildHTTPResponseWithBody(request, request.isKeepAliveRequested() && Configuration.GetConfiguration().isEnableHTTPKeepAlive(), this.requestCount);
-                        Logger.Log(Logger.INFORMATION, "Response built");
-                    }
+
+                    Logger.Log(Logger.INFORMATION, "Building response");
+                    response = HTTPResponse.BuildHTTPResponseWithBody(request, request.isKeepAliveRequested() && Configuration.GetConfiguration().isEnableHTTPKeepAlive(), this.requestCount);
+                    Logger.Log(Logger.INFORMATION, "Response built");
+
                 }
                 catch (RequestException re)
                 {

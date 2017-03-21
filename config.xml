@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<java version="1.8.0_121" class="java.beans.XMLDecoder">
+ <object class="webserver.Configuration">
+  <void property="debugMode">
+   <boolean>false</boolean>
+  </void>
+  <void property="defaultDocument">
+   <string>index.html</string>
+  </void>
+  <void property="enableHTTPKeepAlive">
+   <boolean>true</boolean>
+  </void>
+  <void property="enableThreadPool">
+   <boolean>true</boolean>
+  </void>
+  <void property="httpKeepAliveMax">
+   <int>5</int>
+  </void>
+  <void property="httpKeepAliveTimeout">
+   <int>3</int>
+  </void>
+  <void property="logFile">
+   <string>server_log.txt</string>
+  </void>
+  <void property="loggingLevel">
+   <int>2</int>
+  </void>
+  <void property="numThreads">
+   <int>10</int>
+  </void>
+  <void property="port">
+   <int>8080</int>
+  </void>
+  <void property="rootDirectory">
+   <string>C:\webserver\content</string>
+  </void>
+ </object>
+</java>
