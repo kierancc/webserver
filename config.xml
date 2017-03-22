@@ -20,7 +20,7 @@
    <int>3</int>
   </void>
   <void property="logFile">
-   <string>server_log.txt</string>
+   <string>./server_log.txt</string>
   </void>
   <void property="loggingLevel">
    <int>2</int>
@@ -32,7 +32,7 @@
    <int>8080</int>
   </void>
   <void property="rootDirectory">
-   <string>C:\webserver\content</string>
+   <string>./content</string>
   </void>
  </object>
 </java>

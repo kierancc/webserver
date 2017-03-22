@@ -20,7 +20,7 @@ public class Configuration
     private static Configuration configSingleton = null;
     
     // Path to saved configuration file on filesystem
-    private static final String CONFIG_PATH = "config.xml";
+    private static final String CONFIG_PATH = "./config.xml";
     
     // Static methods
     
@@ -143,8 +143,8 @@ public class Configuration
         this.enableHTTPKeepAlive = true;
         this.httpKeepAliveTimeout = 3;
         this.httpKeepAliveMax = 5;
-        this.loggingLevel = 4;
-        this.logFile = "server_log.txt";
+        this.loggingLevel = 1;
+        this.logFile = "./server_log.txt";
         this.rootDirectory = "C:\\webserver\\content";
         this.defaultDocument = "index.html";
         this.debugMode = true;
