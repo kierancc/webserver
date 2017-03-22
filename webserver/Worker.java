@@ -1,26 +1,45 @@
 package webserver;
 
-import java.io.*;
+import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ * @author Kieran Chin Cheong
+ * @version 1.0
+ * @since 1.0
+ */
 public class Worker implements Runnable
 {
+    // Member variables
+    
     private Socket connectionSocket;
     private int keepAliveTimeout;
     private int keepAliveMax;
     private int requestCount;
     
+    /**
+     * Constructor
+     * @param connectionSocket the Socket object representing a connection to a client
+     */
     public Worker(Socket connectionSocket)
     {
         this.connectionSocket = connectionSocket;
         this.keepAliveTimeout = Configuration.GetConfiguration().getHttpKeepAliveTimeout();
+        
+        // Set this value to 1 if HTTP KeepAlive is not enabled, this will ensure only one request will be served in the lifetime of the connection
         this.keepAliveMax = Configuration.GetConfiguration().isEnableHTTPKeepAlive() ? Configuration.GetConfiguration().getHttpKeepAliveMax() : 1;
         this.requestCount = 0;
     }
 
+    /**
+     * This method is the main execution path of the Worker object
+     * <p>
+     * Here it will read and parse the incoming request, and attempt to create and send the appropriate response
+     * @see java.lang.Runnable#run()
+     */
     @Override
     public void run()
     {
@@ -29,11 +48,12 @@ public class Worker implements Runnable
         // If the incoming HTTP request is valid, and we can handle it, we then create a valid HTTP response and send it back to the client
         // If the HTTP 1.1 KeepAlive feature is enabled, the connection will remain open for a defined window of time. If no new request is received
         // within that window, the connection is then closed. If HTTP 1.1 KeepAlive is not enabled, the connection is immediately closed.
-        // Any errors detected in this process will cause a response to be returned to the client including the appropriate HTTP status code
+        // Any errors detected in this process that necessitate a response to be returned to the client will be created including the appropriate HTTP status code
         try
         {
             Logger.Log(Logger.INFORMATION, String.format("Handling HTTP request from remote address %s", this.connectionSocket.getRemoteSocketAddress().toString()));
             
+            // Potentially loop while more requests may be served by the connection
             while (this.requestCount < this.keepAliveMax)
             {
                 // Declare the request and response objects
@@ -55,6 +75,7 @@ public class Worker implements Runnable
                         
                         Logger.Log(Logger.INFORMATION, String.format("Scheduling KeepAlive timeout timer for TID %d", workerThreadID));
                         
+                        // For simplicitly's sake use an anonymous inner class to close the connection socket since this is a simple operation
                         keepAliveTimeoutTimer.schedule(new TimerTask() {
                             @Override
                             public void run() {
@@ -72,11 +93,12 @@ public class Worker implements Runnable
                         }, this.keepAliveTimeout * 1000);
                     }
                     
+                    // Attempt to read and parse the request
                     request = new HTTPRequest(this.connectionSocket.getInputStream());
                     
                     Logger.Log(Logger.INFORMATION, "Successfully parsed incoming request");
                     
-                    // Input was received, so cancel the HTTP KeepAlive timeout timer if it was enabled
+                    // Valid input was received, so cancel the HTTP KeepAlive timeout timer if it was enabled
                     if (Configuration.GetConfiguration().isEnableHTTPKeepAlive() && this.requestCount > 0)
                     {
                         Logger.Log(Logger.INFORMATION, String.format("Cancelling KeepAlive timeout timer for TID %d", Thread.currentThread().getId()));
@@ -84,6 +106,7 @@ public class Worker implements Runnable
                         keepAliveTimeoutTimer.purge();
                     }
 
+                    // Attempt to build a response to the request
                     Logger.Log(Logger.INFORMATION, "Building response");
                     response = HTTPResponse.BuildHTTPResponseWithBody(request, request.isKeepAliveRequested() && Configuration.GetConfiguration().isEnableHTTPKeepAlive(), this.requestCount);
                     Logger.Log(Logger.INFORMATION, "Response built");
@@ -115,9 +138,11 @@ public class Worker implements Runnable
                 // Log the request/response connection line
                 Logger.LogConnection(request, response, this.connectionSocket.getRemoteSocketAddress().toString(), this.connectionSocket.getLocalSocketAddress().toString());
                 
+                // Increment the request counter
                 this.requestCount++;
             }
             
+            // We have reached the maximum number of requests that can be served for this connection
             // Close the connection to the client
             Logger.Log(Logger.INFORMATION, String.format("Closing connection to clienet with remote address : %s", this.connectionSocket.getRemoteSocketAddress()));
             this.connectionSocket.close();
@@ -128,13 +153,24 @@ public class Worker implements Runnable
         }
         catch (ResponseException re)
         {
-            // TODO Figure out what happens here...
             Logger.Log(Logger.ERROR, String.format("Error responding to request, caught ResponseException : %s", re.toString()));
         }
         catch (Exception e)
         {
             // We have hit an unhandled exception, log this
             Logger.Log(Logger.ERROR, String.format("Error responding to request, unhandled exception : %s", e.toString()));
+        }
+        finally
+        {
+            try
+            {
+                // Ensure that in all cases when a Worker exits it attempts to close the connection socket
+                this.connectionSocket.close();
+            }
+            catch (IOException e)
+            {
+                Logger.Log(Logger.WARNING, String.format("Warning : exiting Worker could not close connection : %s", e.toString()));
+            }
         }
     }
 }
