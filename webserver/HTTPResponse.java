@@ -107,11 +107,11 @@ public class HTTPResponse
     private int remainingResponses;
     
     /**
-     * Constructor
+     * Constructor. Only to be used internally
      * @param isKeepAliveEnabled specifies if HTTPKeepAlive is enabled for this response
      * @param responseNumber the number of this response in the HTTP persistent connection
      */
-    public HTTPResponse(boolean isKeepAliveEnabled, int responseNumber)
+    private HTTPResponse(boolean isKeepAliveEnabled, int responseNumber)
     {
         this.isKeepAliveEnabled = isKeepAliveEnabled;
         this.responseNumber = responseNumber;

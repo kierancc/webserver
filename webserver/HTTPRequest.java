@@ -22,21 +22,19 @@ public class HTTPRequest
     private static final String REQUEST_START_LINE_PATTERN = "^(.+)\\s(.+)\\s(.+)$";
     private static final String HEADER_LINE_PATTERN = "^(.+?):\\s*(.+)\\s*$";
     
-    // Member variables
-    private String requestMethod;
-    private String requestTarget;
-    private String httpVersion;
-    private HashMap<String, String> headerFields = new HashMap<String, String>();
-    private boolean keepAliveRequested;
-    
+    // Static methods
+
     /**
-     * Reads and parses the request made by an accepted client
+     * Builds an HTTPRequest object based on the input in the provided InputStream
      * @param stream InputStream object from accepted client connection
+     * @return new HTTPRequest object
      * @throws RequestException
      * @throws HttpKeepAliveTimeoutException
+     * @throws IOException
      */
-    public HTTPRequest(InputStream stream) throws RequestException, HttpKeepAliveTimeoutException
+    public static HTTPRequest BuildHTTPRequestFromInput(InputStream stream) throws RequestException, HttpKeepAliveTimeoutException, IOException
     {
+        HTTPRequest request = new HTTPRequest();
         // Attempt to parse the incoming request, throw any encountered exceptions so that
         // an appropriate error code can be returned to the client
         try
@@ -71,6 +69,12 @@ public class HTTPRequest
                 throw new HttpKeepAliveTimeoutException();
             }
             
+            // If the line read was null, the request could have been cancelled
+            if (line == null)
+            {
+                throw new SocketException("Null read from socket");
+            }
+            
             Logger.Log(Logger.INFORMATION, String.format("HTTP Request received, start-line : %s", line));
             
             // Validate the received start-line
@@ -80,9 +84,9 @@ public class HTTPRequest
             // The start-line is valid
             if (startLineMatcher.find())
             {
-                this.requestMethod = startLineMatcher.group(1);
-                this.requestTarget = startLineMatcher.group(2);
-                this.httpVersion = startLineMatcher.group(3);
+                request.requestMethod = startLineMatcher.group(1);
+                request.requestTarget = startLineMatcher.group(2);
+                request.httpVersion = startLineMatcher.group(3);
             }
             // The start-line is not valid
             else
@@ -92,16 +96,16 @@ public class HTTPRequest
             
             // Ensure that the request method provided is supported
             // If it is not supported, we need to send back the appropriate response
-            if (! this.isMethodSupported(this.requestMethod))
+            if (! request.isMethodSupported(request.requestMethod))
             {
-                throw new RequestException(Status.NOT_IMPLEMENTED, "Method " + this.requestMethod + " not implemented");
+                throw new RequestException(Status.NOT_IMPLEMENTED, "Method " + request.requestMethod + " not implemented");
             }
             
             // Check that a specific resource was requested, otherwise apply the default document name if only a directory was requested
-            if (this.requestTarget.equals("/"))
+            if (request.requestTarget.equals("/"))
             {
                 Logger.Log(Logger.INFORMATION, "Specific document not requested, applying default document");
-                this.requestTarget += Configuration.GetConfiguration().getDefaultDocument();
+                request.requestTarget += Configuration.GetConfiguration().getDefaultDocument();
             }
             
             // Next we read and parse any provided request headers. These have a form like
@@ -134,14 +138,14 @@ public class HTTPRequest
                     String fieldValue = headerLineMatcher.group(2);
                     
                     // Handle the special case where if a duplicate file name is encountered, it should be appended to the previous, separated by a comma
-                    if (this.headerFields.containsKey(fieldName))
+                    if (request.headerFields.containsKey(fieldName))
                     {
-                        String newValue = this.headerFields.get(fieldName) + "," + fieldValue;
-                        this.headerFields.replace(fieldName, newValue);
+                        String newValue = request.headerFields.get(fieldName) + "," + fieldValue;
+                        request.headerFields.replace(fieldName, newValue);
                     }
                     else
                     {
-                        this.headerFields.put(fieldName, fieldValue);
+                        request.headerFields.put(fieldName, fieldValue);
                     }
                 }
                 // If the line does not match, it is incorrectly formatted
@@ -156,20 +160,20 @@ public class HTTPRequest
             
             // At this point we have finished processing the provided headers.  So we need to check that the host header was provided
             // If it was not provided, this is a bad request
-            if (! this.headerFields.containsKey("host"))
+            if (! request.headerFields.containsKey("host"))
             {
                 throw new RequestException(Status.BAD_REQUEST, "Missing host header");
             }
             
             // Check if the client sent a "connection: keep-alive" header.  If it did, and KeepAlive is enabled on the server, save this information
             // for later usage by the server
-            if (this.headerFields.containsKey("connection") && this.headerFields.get("connection").toLowerCase().equals("keep-alive"))
+            if (request.headerFields.containsKey("connection") && request.headerFields.get("connection").toLowerCase().equals("keep-alive"))
             {
-                this.keepAliveRequested = true;
+                request.keepAliveRequested = true;
             }
             else
             {
-                this.keepAliveRequested = false;
+                request.keepAliveRequested = false;
             }
             
             // If control has reached this point, the request received is valid.  A message body could follow, but it has no meaning
@@ -178,19 +182,36 @@ public class HTTPRequest
             // to ensure that the next time we read from this stream, we are really reading the new request.
             // According to the HTTP specification, a GET request that provides no content-length header has no message body
             // However, if for some reason a content-length was provided, simply read that number of bytes
-            int messageBodyLength = this.getMessageBodyLength();
+            int messageBodyLength = request.getMessageBodyLength();
             
             for (int i = 0; i < messageBodyLength; i++)
             {
                 reader.read(); // read one
             }
+            
+            return request;
         }
         catch (IOException e)
         {
             // Here we failed to read from the socket for an unexpected reason
-            // TODO Figure out how to prevent this from causing a response to be sent
             Logger.Log(Logger.ERROR, String.format("Error reading request : %s", e.toString()));
+            throw e; // Rethrow so that the caller can best determine how to respond to this error
         }
+    }
+    
+    // Member variables
+    private String requestMethod;
+    private String requestTarget;
+    private String httpVersion;
+    private HashMap<String, String> headerFields = new HashMap<String, String>();
+    private boolean keepAliveRequested;
+    
+    /**
+     * Constructor. Only to be used internally
+     */
+    private HTTPRequest()
+    {
+        
     }
     
     /**

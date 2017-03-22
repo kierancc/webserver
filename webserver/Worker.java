@@ -94,7 +94,7 @@ public class Worker implements Runnable
                     }
                     
                     // Attempt to read and parse the request
-                    request = new HTTPRequest(this.connectionSocket.getInputStream());
+                    request = HTTPRequest.BuildHTTPRequestFromInput(this.connectionSocket.getInputStream());
                     
                     Logger.Log(Logger.INFORMATION, "Successfully parsed incoming request");
                     
@@ -146,6 +146,11 @@ public class Worker implements Runnable
             // Close the connection to the client
             Logger.Log(Logger.INFORMATION, String.format("Closing connection to clienet with remote address : %s", this.connectionSocket.getRemoteSocketAddress()));
             this.connectionSocket.close();
+        }
+        catch (IOException ioe)
+        {
+            // We could not read from or write to the socket
+            Logger.Log(Logger.ERROR, String.format("Error reading from or writing to socket %s", ioe.toString()));
         }
         catch (HttpKeepAliveTimeoutException kae)
         {
